@@ -10,6 +10,8 @@ from typing import List, Optional, Dict
 import uuid
 from datetime import datetime, timezone, timedelta
 import bcrypt
+import openai
+import asyncio
 
 # ✅ Optional import (prevents crash if emergentintegrations not installed)
 try:
@@ -163,27 +165,44 @@ async def initialize_demo_data():
 
 # ============= CHATBOT (safe fallback) =============
 
+# ============= CHATBOT (OpenAI-based Integration) =============
 @api_router.post("/chatbot")
 async def chatbot(request: ChatRequest):
-    if not HAS_LLM:
-        return {"response": "Chatbot feature not available (LLM integration missing)."}
+    """
+    E-WIZZ AI Assistant — powered by OpenAI
+    """
     try:
-        api_key = os.environ.get('EMERGENT_LLM_KEY')
-        chat = LlmChat(
-            api_key=api_key,
-            session_id=request.session_id,
-            system_message=(
-                "You are an electricity monitoring assistant for E-WIZZ. "
-                "Help users with electricity consumption, bills, and energy saving tips."
-            )
-        ).with_model("openai", "gpt-4o-mini")
+        api_key = os.environ.get("OPENAI_API_KEY")
+        if not api_key:
+            raise HTTPException(status_code=500, detail="OpenAI API key not set in environment.")
 
-        user_message = UserMessage(text=request.message)
-        response = await chat.send_message(user_message)
-        return {"response": response}
+        openai.api_key = api_key
+
+        # Use async OpenAI chat completion
+        response = await asyncio.to_thread(
+            lambda: openai.ChatCompletion.create(
+                model="gpt-3.5-turbo",
+                messages=[
+                    {
+                        "role": "system",
+                        "content": (
+                            "You are an electricity monitoring assistant for E-WIZZ. "
+                            "Help users analyze electricity usage, reduce power consumption, "
+                            "and give insights on energy bills and eco-friendly practices."
+                        ),
+                    },
+                    {"role": "user", "content": request.message},
+                ],
+            )
+        )
+
+        message = response["choices"][0]["message"]["content"]
+        return {"response": message}
+
     except Exception as e:
         logging.error(f"Chatbot error: {e}")
-        return {"response": "I'm having trouble connecting right now. Please try again later."}
+        return {"response": "⚠️ AI assistant is temporarily unavailable. Please try again later."}
+
 
 # ============= ROOT ENDPOINT =============
 
