@@ -125,7 +125,41 @@ async def register(credentials: UserLogin):
     await db.users.insert_one(doc)
     return {"message": "User registered successfully", "user_id": user.id}
 
-# (other endpoints unchanged…)
+# ============= DEMO DATA INIT ENDPOINT =============
+
+@api_router.post("/init")
+async def initialize_demo_data():
+    # ✅ Check if already initialized
+    existing = await db.users.find_one({"username": "admin"})
+    if existing:
+        return {"message": "Demo data already exists"}
+
+    # Create admin user
+    admin = User(
+        username="admin",
+        password_hash=hash_password("admin123"),
+        role="admin"
+    )
+    await db.users.insert_one(admin.model_dump())
+
+    # Create demo user
+    demo_user = User(
+        username="demo_user_123",
+        password_hash=hash_password("ElecDemo@2023"),
+        role="user"
+    )
+    await db.users.insert_one(demo_user.model_dump())
+
+    # Create demo appliances
+    appliances = [
+        Appliance(user_id=demo_user.id, name="Refrigerator", power_rating=200, location="Kitchen"),
+        Appliance(user_id=demo_user.id, name="Air Conditioner", power_rating=1500, location="Bedroom"),
+        Appliance(user_id=demo_user.id, name="Washing Machine", power_rating=500, location="Laundry Room"),
+    ]
+    for appliance in appliances:
+        await db.appliances.insert_one(appliance.model_dump())
+
+    return {"message": "Demo data initialized successfully"}
 
 # ============= CHATBOT (safe fallback) =============
 
@@ -151,9 +185,6 @@ async def chatbot(request: ChatRequest):
         logging.error(f"Chatbot error: {e}")
         return {"response": "I'm having trouble connecting right now. Please try again later."}
 
-# ============= REST OF YOUR CODE =============
-# (keep all your dashboard, eco-mode, bill, predict, admin, and init endpoints unchanged)
-# …
 # ============= ROOT ENDPOINT =============
 
 @api_router.get("/")
@@ -161,6 +192,8 @@ async def root():
     return {"message": "E-WIZZ API is running"}
 
 app.include_router(api_router)
+
+# ============= MIDDLEWARE =============
 
 app.add_middleware(
     CORSMiddleware,
