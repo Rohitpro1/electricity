@@ -166,42 +166,25 @@ async def initialize_demo_data():
 # ============= CHATBOT (safe fallback) =============
 
 # ============= CHATBOT (OpenAI-based Integration) =============
+from openai import OpenAI
+
+client_ai = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+
 @api_router.post("/chatbot")
 async def chatbot(request: ChatRequest):
-    """
-    E-WIZZ AI Assistant — powered by OpenAI
-    """
     try:
-        api_key = os.environ.get("OPENAI_API_KEY")
-        if not api_key:
-            raise HTTPException(status_code=500, detail="OpenAI API key not set in environment.")
-
-        openai.api_key = api_key
-
-        # Use async OpenAI chat completion
-        response = await asyncio.to_thread(
-            lambda: openai.ChatCompletion.create(
-                model="gpt-3.5-turbo",
-                messages=[
-                    {
-                        "role": "system",
-                        "content": (
-                            "You are an electricity monitoring assistant for E-WIZZ. "
-                            "Help users analyze electricity usage, reduce power consumption, "
-                            "and give insights on energy bills and eco-friendly practices."
-                        ),
-                    },
-                    {"role": "user", "content": request.message},
-                ],
-            )
+        completion = client_ai.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": "You are an electricity monitoring assistant for E-WIZZ. Help users with electricity consumption, bills, and energy saving tips."},
+                {"role": "user", "content": request.message}
+            ]
         )
-
-        message = response["choices"][0]["message"]["content"]
-        return {"response": message}
-
+        reply = completion.choices[0].message.content
+        return {"response": reply}
     except Exception as e:
         logging.error(f"Chatbot error: {e}")
-        return {"response": "⚠️ AI assistant is temporarily unavailable. Please try again later."}
+        return {"response": "I'm having trouble connecting right now. Please try again later."}
 
 
 # ============= ROOT ENDPOINT =============
