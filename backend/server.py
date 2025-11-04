@@ -126,6 +126,45 @@ async def initialize_demo_data():
     return {"message": "Demo data initialized successfully"}
 
 # ============= CHATBOT ENDPOINT =============
+# ============= DASHBOARD DATA ENDPOINT =============
+
+@api_router.get("/dashboard/{user_id}")
+async def get_dashboard(user_id: str, period: str = "today"):
+    """
+    Returns demo electricity consumption stats for the dashboard.
+    Replace this logic later with actual database aggregation.
+    """
+
+    # Example simulated data (you can replace later with real)
+    hourly_data = {
+        "2025-11-04T00:00:00": 0.5,
+        "2025-11-04T01:00:00": 0.7,
+        "2025-11-04T02:00:00": 0.8,
+        "2025-11-04T03:00:00": 1.0,
+        "2025-11-04T04:00:00": 1.2,
+        "2025-11-04T05:00:00": 1.4,
+    }
+
+    appliance_breakdown = {
+        "Refrigerator": 30.5,
+        "Air Conditioner": 45.0,
+        "Washing Machine": 24.5,
+    }
+
+    # Demo calculations
+    total_consumption = sum(hourly_data.values())  # in kWh
+    avg_daily_usage = total_consumption / 1  # assuming 1 day for demo
+    total_cost = total_consumption * 7.5  # ₹7.5 per kWh (example)
+
+    return {
+        "total_consumption": round(total_consumption, 2),
+        "avg_daily_usage": round(avg_daily_usage, 2),
+        "total_cost": round(total_cost, 2),
+        "hourly_data": hourly_data,
+        "appliance_breakdown": appliance_breakdown,
+        "live_usage": 1.6  # demo live value (kW)
+    }
+
 
 @api_router.post("/chatbot")
 async def chatbot(request: ChatRequest):
