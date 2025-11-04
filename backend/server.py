@@ -175,7 +175,7 @@ if GEMINI_KEY:
 else:
     _gemini_model = None
     logging.warning("⚠️ GOOGLE_API_KEY not set — chatbot will use fallback responses.")
-@@ -173,7 +176,6 @@ async def chatbot(request: ChatRequest):
+
     """
     E-WIZZ AI Assistant — Gemini-backed with safe fallback.
     """
@@ -183,7 +183,6 @@ else:
     if not _gemini_model:
         return {
             "response": (
-@@ -184,32 +186,28 @@ async def chatbot(request: ChatRequest):
 
     system_prompt = (
         "You are an electricity monitoring assistant for E-WIZZ. "
