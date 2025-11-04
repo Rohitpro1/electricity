@@ -156,34 +156,60 @@ async def initialize_demo_data():
 # ============= CHATBOT (safe fallback) =============
 
 # ============= CHATBOT (OpenAI-based Integration) =============
-from openai import OpenAI
+# ============= CHATBOT (Gemini free-tier) =============
+import asyncio
+import google.generativeai as genai
 
-client_ai = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+# Configure once at startup
+GEMINI_KEY = os.environ.get("GOOGLE_API_KEY")
+if GEMINI_KEY:
+    genai.configure(api_key=GEMINI_KEY)
+    _gemini_model = genai.GenerativeModel("gemini-1.5-flash")  # fast + free-tier
+else:
+    _gemini_model = None
+    logging.warning("⚠️ GOOGLE_API_KEY not set — chatbot will use fallback responses.")
 
 @api_router.post("/chatbot")
 async def chatbot(request: ChatRequest):
+    """
+    E-WIZZ AI Assistant — Gemini-backed with safe fallback.
+    """
+    # Fallback when no key configured
+    if not _gemini_model:
+        return {
+            "response": (
+                "AI assistant is not fully enabled yet. "
+                "Tip: add GOOGLE_API_KEY in backend env to turn on smart replies."
+            )
+        }
+
+    system_prompt = (
+        "You are an electricity monitoring assistant for E-WIZZ. "
+        "Help users analyze electricity usage, estimate bills, and give practical energy-saving tips. "
+        "When giving numbers, keep them realistic and explain the steps briefly."
+    )
+
+    # The SDK is sync; run in a thread to keep FastAPI happy
     try:
-        completion = client_ai.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": "You are an electricity monitoring assistant for E-WIZZ. Help users with electricity consumption, bills, and energy saving tips."},
-                {"role": "user", "content": request.message}
-            ]
-        )
-        reply = completion.choices[0].message.content
-        return {"response": reply}
+        def _gen():
+            return _gemini_model.generate_content(
+                [system_prompt, f"User: {request.message}"]
+            )
+
+        result = await asyncio.to_thread(_gen)
+        text = getattr(result, "text", None) or "I couldn't generate a response."
+        return {"response": text.strip()}
+
     except Exception as e:
         logging.error(f"Chatbot error: {e}")
-        return {"response": "I'm having trouble connecting right now. Please try again later."}
+        # graceful fallback so UI doesn’t break
+        return {
+            "response": (
+                "I'm having trouble reaching the AI right now. "
+                "Please try again in a bit."
+            )
+        }
 
-
-# ============= ROOT ENDPOINT =============
-
-@api_router.get("/")
-async def root():
-    return {"message": "E-WIZZ API is running"}
-
-app.include_router(api_router)
 
 # ============= MIDDLEWARE =============
 
