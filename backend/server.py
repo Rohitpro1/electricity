@@ -166,31 +166,49 @@ async def get_dashboard(user_id: str, period: str = "today"):
     }
 # ============= BILL CALCULATOR ENDPOINT =============
 
+# ============= BILL CALCULATOR ENDPOINT (with BESCOM tariff) =============
+
 @api_router.get("/bill/{user_id}")
 async def calculate_bill(user_id: str):
     """
-    Simple bill calculator using total consumption and fixed tariff.
+    Calculates bill based on BESCOM LT2A slab rates.
     """
-    # Fetch user’s usage logs (like dashboard)
+    # Fetch user's usage logs
     usage_cursor = db.usage_logs.find({"user_id": user_id})
     usage_logs = await usage_cursor.to_list(length=None)
 
     if not usage_logs:
         return {"message": "No usage data found", "total_units": 0, "bill_amount": 0}
 
+    # Total units consumed
     total_units = sum(log["power_consumed"] for log in usage_logs)
-    rate_per_unit = 7.5
-    fixed_charge = 50
 
-    bill_amount = (total_units * rate_per_unit) + fixed_charge
+    # Apply BESCOM tariff
+    remaining = total_units
+    bill_amount = 0.0
+
+    if remaining <= 50:
+        bill_amount = remaining * 4.15
+        fixed_charge = 60
+    elif remaining <= 100:
+        bill_amount = (50 * 4.15) + ((remaining - 50) * 5.60)
+        fixed_charge = 80
+    elif remaining <= 200:
+        bill_amount = (50 * 4.15) + (50 * 5.60) + ((remaining - 100) * 7.15)
+        fixed_charge = 100
+    else:
+        bill_amount = (50 * 4.15) + (50 * 5.60) + (100 * 7.15) + ((remaining - 200) * 8.20)
+        fixed_charge = 120
+
+    total_bill = bill_amount + fixed_charge
 
     return {
         "total_units": round(total_units, 2),
-        "rate_per_unit": rate_per_unit,
+        "bill_amount": round(bill_amount, 2),
         "fixed_charge": fixed_charge,
-        "bill_amount": round(bill_amount, 2)
+        "total_payable": round(total_bill, 2),
+        "tariff_type": "BESCOM LT2A Domestic"
     }
-
 
 @api_router.post("/chatbot")
 async def chatbot(request: ChatRequest):
@@ -224,30 +242,49 @@ async def chatbot(request: ChatRequest):
         }
 # ============= COST PREDICTOR ENDPOINT =============
 
+# ============= COST PREDICTOR ENDPOINT (with BESCOM tariff) =============
+
 @api_router.get("/predict/{user_id}")
 async def predict_future_cost(user_id: str):
     """
-    Predict next month's electricity cost based on past data.
+    Predicts next month's electricity cost using BESCOM tariff slabs.
     """
     usage_cursor = db.usage_logs.find({"user_id": user_id})
     usage_logs = await usage_cursor.to_list(length=None)
 
     if not usage_logs:
-        return {"message": "No usage data to predict", "predicted_cost": 0}
+        return {
+            "message": "No usage data to predict",
+            "predicted_units": 0,
+            "predicted_cost": 0
+        }
 
-    # Average monthly usage
+    # --- Step 1: Calculate average daily usage ---
     total_units = sum(log["power_consumed"] for log in usage_logs)
-    days_recorded = len(set(log["timestamp"].date() for log in usage_logs))
-    avg_daily_usage = total_units / max(days_recorded, 1)
+    unique_days = len(set(log["timestamp"].date() for log in usage_logs))
+    avg_daily_usage = total_units / max(unique_days, 1)
 
-    # Predict next 30 days
+    # --- Step 2: Predict next month's consumption (30 days) ---
     predicted_units = avg_daily_usage * 30
-    predicted_cost = predicted_units * 7.5 + 50  # ₹7.5/unit + ₹50 fixed
+
+    # --- Step 3: Apply BESCOM Tariff ---
+    def calculate_bescom_bill(units: float) -> float:
+        if units <= 50:
+            return units * 4.15 + 60
+        elif units <= 100:
+            return (50 * 4.15) + ((units - 50) * 5.60) + 80
+        elif units <= 200:
+            return (50 * 4.15) + (50 * 5.60) + ((units - 100) * 7.15) + 100
+        else:
+            return (50 * 4.15) + (50 * 5.60) + (100 * 7.15) + ((units - 200) * 8.20) + 120
+
+    predicted_cost = calculate_bescom_bill(predicted_units)
 
     return {
+        "avg_daily_usage": round(avg_daily_usage, 2),
         "predicted_units": round(predicted_units, 2),
         "predicted_cost": round(predicted_cost, 2),
-        "avg_daily_usage": round(avg_daily_usage, 2)
+        "tariff_type": "BESCOM LT2A Domestic"
     }
 
 # ============= ROOT ENDPOINT =============
