@@ -164,6 +164,32 @@ async def get_dashboard(user_id: str, period: str = "today"):
         "appliance_breakdown": appliance_breakdown,
         "live_usage": 1.6  # demo live value (kW)
     }
+# ============= BILL CALCULATOR ENDPOINT =============
+
+@api_router.get("/bill/{user_id}")
+async def calculate_bill(user_id: str):
+    """
+    Simple bill calculator using total consumption and fixed tariff.
+    """
+    # Fetch user’s usage logs (like dashboard)
+    usage_cursor = db.usage_logs.find({"user_id": user_id})
+    usage_logs = await usage_cursor.to_list(length=None)
+
+    if not usage_logs:
+        return {"message": "No usage data found", "total_units": 0, "bill_amount": 0}
+
+    total_units = sum(log["power_consumed"] for log in usage_logs)
+    rate_per_unit = 7.5
+    fixed_charge = 50
+
+    bill_amount = (total_units * rate_per_unit) + fixed_charge
+
+    return {
+        "total_units": round(total_units, 2),
+        "rate_per_unit": rate_per_unit,
+        "fixed_charge": fixed_charge,
+        "bill_amount": round(bill_amount, 2)
+    }
 
 
 @api_router.post("/chatbot")
@@ -196,6 +222,33 @@ async def chatbot(request: ChatRequest):
         return {
             "response": "I'm having trouble reaching the AI right now. Please try again in a bit."
         }
+# ============= COST PREDICTOR ENDPOINT =============
+
+@api_router.get("/predict/{user_id}")
+async def predict_future_cost(user_id: str):
+    """
+    Predict next month's electricity cost based on past data.
+    """
+    usage_cursor = db.usage_logs.find({"user_id": user_id})
+    usage_logs = await usage_cursor.to_list(length=None)
+
+    if not usage_logs:
+        return {"message": "No usage data to predict", "predicted_cost": 0}
+
+    # Average monthly usage
+    total_units = sum(log["power_consumed"] for log in usage_logs)
+    days_recorded = len(set(log["timestamp"].date() for log in usage_logs))
+    avg_daily_usage = total_units / max(days_recorded, 1)
+
+    # Predict next 30 days
+    predicted_units = avg_daily_usage * 30
+    predicted_cost = predicted_units * 7.5 + 50  # ₹7.5/unit + ₹50 fixed
+
+    return {
+        "predicted_units": round(predicted_units, 2),
+        "predicted_cost": round(predicted_cost, 2),
+        "avg_daily_usage": round(avg_daily_usage, 2)
+    }
 
 # ============= ROOT ENDPOINT =============
 
