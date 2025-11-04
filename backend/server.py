@@ -156,14 +156,17 @@ async def initialize_demo_data():
 
 # ============= CHATBOT (OpenAI-based Integration) =============
 # ============= CHATBOT (Gemini free-tier) =============
-import asyncio
+# ============= CHATBOT (Gemini Free-tier Fixed) =============
 import google.generativeai as genai
 
-# Configure once at startup
 GEMINI_KEY = os.environ.get("GOOGLE_API_KEY")
 if GEMINI_KEY:
     genai.configure(api_key=GEMINI_KEY)
-    _gemini_model = genai.GenerativeModel("gemini-1.5-flash")  # fast + free-tier
+    try:
+        _gemini_model = genai.GenerativeModel("gemini-1.5-flash-latest")  # ✅ fixed model name
+    except Exception as e:
+        logging.error(f"Error loading Gemini model: {e}")
+        _gemini_model = None
 else:
     _gemini_model = None
     logging.warning("⚠️ GOOGLE_API_KEY not set — chatbot will use fallback responses.")
@@ -173,7 +176,6 @@ async def chatbot(request: ChatRequest):
     """
     E-WIZZ AI Assistant — Gemini-backed with safe fallback.
     """
-    # Fallback when no key configured
     if not _gemini_model:
         return {
             "response": (
@@ -184,31 +186,27 @@ async def chatbot(request: ChatRequest):
 
     system_prompt = (
         "You are an electricity monitoring assistant for E-WIZZ. "
-        "Help users analyze electricity usage, estimate bills, and give practical energy-saving tips. "
-        "When giving numbers, keep them realistic and explain the steps briefly."
+        "Help users analyze electricity usage, estimate bills, and give practical energy-saving tips."
     )
 
-    # The SDK is sync; run in a thread to keep FastAPI happy
     try:
-        def _gen():
-            return _gemini_model.generate_content(
-                [system_prompt, f"User: {request.message}"]
-            )
+        # Gemini API call (no async needed; SDK handles sync call fine)
+        result = _gemini_model.generate_content(
+            [system_prompt, f"User: {request.message}"]
+        )
 
-        result = await asyncio.to_thread(_gen)
-        text = getattr(result, "text", None) or "I couldn't generate a response."
+        text = getattr(result, "text", None)
+        if not text:
+            text = "I'm sorry, I couldn't generate a response."
         return {"response": text.strip()}
 
     except Exception as e:
         logging.error(f"Chatbot error: {e}")
-        # graceful fallback so UI doesn’t break
         return {
             "response": (
-                "I'm having trouble reaching the AI right now. "
-                "Please try again in a bit."
+                "I'm having trouble reaching the AI right now. Please try again in a bit."
             )
         }
-
 
 # ============= ROOT ENDPOINT & ROUTER ATTACH =============
 
