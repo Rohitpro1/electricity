@@ -124,6 +124,29 @@ async def initialize_demo_data():
         await db.appliances.insert_one(appliance.model_dump())
 
     return {"message": "Demo data initialized successfully"}
+    from random import randint, uniform
+
+@api_router.post("/generate-usage/{user_id}")
+async def generate_usage(user_id: str):
+    """
+    Adds random demo usage logs for testing bill calculation.
+    """
+    logs = []
+    now = datetime.now(timezone.utc)
+
+    for i in range(15):  # 15 sample usage logs for past days
+        log = {
+            "user_id": user_id,
+            "appliance_id": f"appliance-{i}",
+            "timestamp": (now - timedelta(days=i)).isoformat(),
+            "duration_minutes": randint(30, 120),
+            "power_consumed": round(uniform(0.5, 3.0), 2)
+        }
+        await db.usage_logs.insert_one(log)
+        logs.append(log)
+
+    return {"message": "Demo usage logs added", "count": len(logs)}
+
 
 # ============= CHATBOT ENDPOINT =============
 # ============= DASHBOARD DATA ENDPOINT =============
