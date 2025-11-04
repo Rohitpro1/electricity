@@ -13,16 +13,6 @@ import bcrypt
 import openai
 import asyncio
 
-# ✅ Optional import (prevents crash if emergentintegrations not installed)
-try:
-    from emergentintegrations.llm.chat import LlmChat, UserMessage
-    HAS_LLM = True
-except ImportError:
-    HAS_LLM = False
-    LlmChat = None
-    UserMessage = None
-    logging.warning("⚠️ emergentintegrations not installed — chatbot features disabled.")
-
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
