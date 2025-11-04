@@ -321,13 +321,19 @@ app.include_router(api_router)
 
 # ============= MIDDLEWARE =============
 
+from starlette.middleware.cors import CORSMiddleware
+
 app.add_middleware(
     CORSMiddleware,
+    allow_origins=[
+        "https://electricity-omega.vercel.app",  # ✅ your frontend URL
+        "https://electricity-lill.onrender.com"  # optional: backend for direct testing
+    ],
     allow_credentials=True,
-    allow_origins=os.environ.get('CORS_ORIGINS', '*').split(','),
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 logging.basicConfig(
     level=logging.INFO,
