@@ -12,6 +12,8 @@ from datetime import datetime, timezone, timedelta
 import bcrypt
 import asyncio
 import google.generativeai as genai
+from random import randint, uniform
+
 
 # ============= CONFIG =============
 ROOT_DIR = Path(__file__).parent
