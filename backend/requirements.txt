@@ -129,4 +129,4 @@ motor
 bcrypt
 python-multipart
 starlette
-openai
+google-generativeai>=0.7.2
