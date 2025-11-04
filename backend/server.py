@@ -6,20 +6,36 @@ import os
 import logging
 from pathlib import Path
 from pydantic import BaseModel, Field, ConfigDict
-from typing import List, Optional, Dict
+from typing import List
 import uuid
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 import bcrypt
 import asyncio
+import google.generativeai as genai
 
+# ============= CONFIG =============
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
-# MongoDB connection
+# MongoDB setup
 mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
 
+# Gemini setup
+GEMINI_KEY = os.environ.get("GOOGLE_API_KEY")
+if GEMINI_KEY:
+    try:
+        genai.configure(api_key=GEMINI_KEY)
+        _gemini_model = genai.GenerativeModel("gemini-1.5-flash")
+    except Exception as e:
+        logging.error(f"Error initializing Gemini model: {e}")
+        _gemini_model = None
+else:
+    _gemini_model = None
+    logging.warning("⚠️ GOOGLE_API_KEY not set — chatbot will use fallback responses.")
+
+# FastAPI app
 app = FastAPI()
 api_router = APIRouter(prefix="/api")
 
@@ -55,38 +71,9 @@ class ApplianceCreate(BaseModel):
 class ApplianceControl(BaseModel):
     status: str
 
-class UsageLog(BaseModel):
-    model_config = ConfigDict(extra="ignore")
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    user_id: str
-    appliance_id: str
-    timestamp: datetime
-    duration_minutes: float
-    power_consumed: float
-
-class Tariff(BaseModel):
-    model_config = ConfigDict(extra="ignore")
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    name: str
-    fixed_charge: float
-    per_unit_charge: float
-    effective_from: datetime
-
-class ChatMessage(BaseModel):
-    model_config = ConfigDict(extra="ignore")
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    user_id: str
-    session_id: str
-    message: str
-    response: str
-    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-
 class ChatRequest(BaseModel):
     message: str
     session_id: str
-
-class EcoModeRequest(BaseModel):
-    tier: str
 
 # ============= HELPERS =============
 
@@ -111,37 +98,23 @@ async def register(credentials: UserLogin):
     if existing:
         raise HTTPException(status_code=400, detail="Username already exists")
     user = User(username=credentials.username, password_hash=hash_password(credentials.password))
-    doc = user.model_dump()
-    doc['created_at'] = doc['created_at'].isoformat()
-    await db.users.insert_one(doc)
+    await db.users.insert_one(user.model_dump())
     return {"message": "User registered successfully", "user_id": user.id}
 
 # ============= DEMO DATA INIT ENDPOINT =============
 
 @api_router.post("/init")
 async def initialize_demo_data():
-    # ✅ Check if already initialized
     existing = await db.users.find_one({"username": "admin"})
     if existing:
         return {"message": "Demo data already exists"}
 
-    # Create admin user
-    admin = User(
-        username="admin",
-        password_hash=hash_password("admin123"),
-        role="admin"
-    )
+    admin = User(username="admin", password_hash=hash_password("admin123"), role="admin")
     await db.users.insert_one(admin.model_dump())
 
-    # Create demo user
-    demo_user = User(
-        username="demo_user_123",
-        password_hash=hash_password("ElecDemo@2023"),
-        role="user"
-    )
+    demo_user = User(username="demo_user_123", password_hash=hash_password("ElecDemo@2023"))
     await db.users.insert_one(demo_user.model_dump())
 
-    # Create demo appliances
     appliances = [
         Appliance(user_id=demo_user.id, name="Refrigerator", power_rating=200, location="Kitchen"),
         Appliance(user_id=demo_user.id, name="Air Conditioner", power_rating=1500, location="Bedroom"),
@@ -152,82 +125,46 @@ async def initialize_demo_data():
 
     return {"message": "Demo data initialized successfully"}
 
-# ============= CHATBOT (safe fallback) =============
+# ============= CHATBOT ENDPOINT =============
 
-# ============= CHATBOT (OpenAI-based Integration) =============
-# ============= CHATBOT (Gemini free-tier) =============
-# ============= CHATBOT (Gemini Free-tier Fixed) =============
-# ============= CHATBOT (Gemini-Pro, fully compatible) =============
-import asyncio
-# ============= CHATBOT (Gemini Free-tier Fixed) =============
-import google.generativeai as genai
-
-# Configure once at startup
-GEMINI_KEY = os.environ.get("GOOGLE_API_KEY")
-if GEMINI_KEY:
-    genai.configure(api_key=GEMINI_KEY)
-    _gemini_model = genai.GenerativeModel("gemini-1.5-flash")  # fast + free-tier
-    try:
-        _gemini_model = genai.GenerativeModel("gemini-1.5-flash-latest")  # ✅ fixed model name
-    except Exception as e:
-        logging.error(f"Error loading Gemini model: {e}")
-        _gemini_model = None
-else:
-    _gemini_model = None
-    logging.warning("⚠️ GOOGLE_API_KEY not set — chatbot will use fallback responses.")
-
+@api_router.post("/chatbot")
+async def chatbot(request: ChatRequest):
     """
-    E-WIZZ AI Assistant — Gemini-backed with safe fallback.
+    E-WIZZ AI Assistant — Gemini-backed with fallback.
     """
-    # Fallback when no key configured
     if not _gemini_model:
         return {
-            "response": (
+            "response": "AI assistant not fully enabled. Add GOOGLE_API_KEY in backend env to activate."
+        }
 
     system_prompt = (
         "You are an electricity monitoring assistant for E-WIZZ. "
         "Help users analyze electricity usage, estimate bills, and give practical energy-saving tips. "
         "When giving numbers, keep them realistic and explain the steps briefly."
-        "Help users analyze electricity usage, estimate bills, and give practical energy-saving tips."
     )
 
-    # The SDK is sync; run in a thread to keep FastAPI happy
     try:
-        def _gen():
-            return _gemini_model.generate_content(
-                [system_prompt, f"User: {request.message}"]
-            )
+        # Gemini SDK call inside thread for async compatibility
+        def _generate():
+            return _gemini_model.generate_content([system_prompt, f"User: {request.message}"])
 
-        result = await asyncio.to_thread(_gen)
-        text = getattr(result, "text", None) or "I couldn't generate a response."
-        # Gemini API call (no async needed; SDK handles sync call fine)
-        result = _gemini_model.generate_content(
-            [system_prompt, f"User: {request.message}"]
-        )
-
-        text = getattr(result, "text", None)
-        if not text:
-            text = "I'm sorry, I couldn't generate a response."
+        result = await asyncio.to_thread(_generate)
+        text = getattr(result, "text", None) or "I couldn't generate a response right now."
         return {"response": text.strip()}
 
     except Exception as e:
         logging.error(f"Chatbot error: {e}")
-        # graceful fallback so UI doesn’t break
         return {
-            "response": (
-                "I'm having trouble reaching the AI right now. "
-                "Please try again in a bit."
-                "I'm having trouble reaching the AI right now. Please try again in a bit."
-            )
+            "response": "I'm having trouble reaching the AI right now. Please try again in a bit."
         }
 
-# ============= ROOT ENDPOINT & ROUTER ATTACH =============
+# ============= ROOT ENDPOINT =============
 
 @api_router.get("/")
 async def root():
     return {"message": "E-WIZZ API is running"}
 
-# Attach router to FastAPI app
+# Attach router
 app.include_router(api_router)
 
 # ============= MIDDLEWARE =============
