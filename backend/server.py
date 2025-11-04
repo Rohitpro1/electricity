@@ -210,6 +210,15 @@ async def chatbot(request: ChatRequest):
         }
 
 
+# ============= ROOT ENDPOINT & ROUTER ATTACH =============
+
+@api_router.get("/")
+async def root():
+    return {"message": "E-WIZZ API is running"}
+
+# Attach router to FastAPI app
+app.include_router(api_router)
+
 # ============= MIDDLEWARE =============
 
 app.add_middleware(
