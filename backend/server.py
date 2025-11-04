@@ -10,7 +10,6 @@ from typing import List, Optional, Dict
 import uuid
 from datetime import datetime, timezone, timedelta
 import bcrypt
-import openai
 import asyncio
 
 ROOT_DIR = Path(__file__).parent
