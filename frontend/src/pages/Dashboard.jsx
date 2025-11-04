@@ -111,17 +111,37 @@ export default function Dashboard({ user, onLogout }) {
             <div className="loading-spinner"></div>
           ) : (
             <>
-              <div className="stats-grid">
-                <div className="stat-card glass">
-                  <div className="stat-icon">⚡</div>
-                  <div className="stat-info">
-                    <div className="stat-label">Total Consumption</div>
-                    <div className="stat-value" data-testid="total-consumption">
-                      {dashboardData?.total_consumption || 0} kWh
-                    </div>
-                  </div>
-                </div>
-              </div>
+             <div className="stats-grid">
+  <div className="stat-card glass">
+    <div className="stat-icon">⚡</div>
+    <div className="stat-info">
+      <div className="stat-label">Total Consumption</div>
+      <div className="stat-value">
+        {dashboardData?.total_consumption?.toFixed(2) || 0} kWh
+      </div>
+    </div>
+  </div>
+
+  <div className="stat-card glass">
+    <div className="stat-icon">💰</div>
+    <div className="stat-info">
+      <div className="stat-label">Estimated Cost</div>
+      <div className="stat-value">
+        ₹{dashboardData?.total_cost?.toFixed(2) || 0}
+      </div>
+    </div>
+  </div>
+
+  <div className="stat-card glass">
+    <div className="stat-icon">📈</div>
+    <div className="stat-info">
+      <div className="stat-label">Average Daily Usage</div>
+      <div className="stat-value">
+        {dashboardData?.avg_daily_usage?.toFixed(2) || 0} kWh/day
+      </div>
+    </div>
+  </div>
+</div>
 
               <div className="charts-grid">
                 <div className="chart-card glass">
