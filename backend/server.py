@@ -326,8 +326,9 @@ from starlette.middleware.cors import CORSMiddleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "https://electricity-omega.vercel.app",  # ✅ your frontend URL
-        "https://electricity-lill.onrender.com"  # optional: backend for direct testing
+        "https://electricity-omega.vercel.app",  # ✅ your frontend domain
+        "http://localhost:3000",                 # ✅ for local testing
+        "https://electricity-lill.onrender.com"  # ✅ backend itself (optional)
     ],
     allow_credentials=True,
     allow_methods=["*"],
