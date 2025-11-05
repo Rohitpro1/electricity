@@ -391,33 +391,30 @@ async def chatbot(request: ChatRequest):
 async def predict_future_cost(user_id: str):
     """
     Predicts next month's electricity cost using BESCOM LT2A domestic tariff.
-    Uses actual usage_logs data (same as /bill).
+    Compatible with existing frontend field names.
     """
 
-    # Fetch all usage logs from the correct collection
     usage_logs = await db.usage_logs.find({"user_id": user_id}).to_list(length=None)
 
     if not usage_logs or len(usage_logs) == 0:
         return {
             "message": "No usage data to predict",
-            "avg_daily_usage": 0,
+            "predicted_monthly_cost": 0,
             "predicted_units": 0,
-            "predicted_cost": 0,
+            "average_daily_units": 0,
             "tariff_type": "BESCOM LT2A Domestic"
         }
 
     # --- Step 1: Calculate total units and daily average ---
     total_units = sum(log.get("power_consumed", 0) for log in usage_logs)
 
-    # Extract unique dates from timestamps
     unique_days = len({
         datetime.fromisoformat(log["timestamp"]).date()
         for log in usage_logs if "timestamp" in log
     })
-
     avg_daily_usage = total_units / max(unique_days, 1)
 
-    # --- Step 2: Predict next month's consumption (30 days) ---
+    # --- Step 2: Predict next month's consumption ---
     predicted_units = avg_daily_usage * 30
 
     # --- Step 3: Apply BESCOM Tariff ---
@@ -433,14 +430,14 @@ async def predict_future_cost(user_id: str):
 
     predicted_cost = calculate_bescom_bill(predicted_units)
 
-    # --- Step 4: Return formatted result ---
+    # --- Step 4: Return frontend-matching keys ---
     return {
-    "message": "Prediction calculated successfully",
-    "avg_daily_usage": round(avg_daily_usage, 2),
-    "predicted_units": round(predicted_units, 2),
-    "predicted_cost": round(predicted_cost, 2),
-    "tariff_type": "BESCOM LT2A Domestic"
-}
+        "message": "Prediction calculated successfully",
+        "predicted_monthly_cost": round(predicted_cost, 2),
+        "predicted_units": round(predicted_units, 2),
+        "average_daily_units": round(avg_daily_usage, 2),
+        "tariff_type": "BESCOM LT2A Domestic"
+    }
 
 # ============= ROOT ENDPOINT =============
 
