@@ -128,6 +128,9 @@ async def initialize_demo_data():
     return {"message": "Demo data initialized successfully"}
     from random import randint, uniform
 
+from datetime import datetime, timezone, timedelta
+from random import randint, uniform
+
 @api_router.post("/generate-usage/{user_id}")
 async def generate_usage(user_id: str):
     """
@@ -142,13 +145,13 @@ async def generate_usage(user_id: str):
             "appliance_id": f"appliance-{i}",
             "timestamp": (now - timedelta(days=i)).isoformat(),
             "duration_minutes": randint(30, 120),
-            "power_consumed": round(uniform(0.5, 3.0), 2)
+            "power_consumed": round(uniform(0.5, 3.0), 2)  # in kWh
         }
-        await db.usage_logs.insert_one(log)
+        # ✅ insert into the same collection used by /bill
+        await db.usagelogs.insert_one(log)
         logs.append(log)
 
     return {"message": "Demo usage logs added", "count": len(logs)}
-
 
 @api_router.get("/bill/{user_id}")
 async def get_bill(user_id: str):
