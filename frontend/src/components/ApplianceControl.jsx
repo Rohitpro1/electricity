@@ -28,21 +28,25 @@ export default function ApplianceControl({ userId }) {
   };
 
   const handleAdd = async (e) => {
-    e.preventDefault();
-    try {
-      await axios.post(`${API}/appliances/${userId}`, {
-        name: newAppliance.name,
-        power_rating: parseFloat(newAppliance.power_rating),
-        location: newAppliance.location
-      });
-      toast.success('Appliance added');
-      setNewAppliance({ name: '', power_rating: '', location: '' });
-      setShowAddForm(false);
-      fetchAppliances();
-    } catch (error) {
-      toast.error('Failed to add appliance');
-    }
-  };
+  e.preventDefault();
+  try {
+    await axios.post(`${API}/appliances/${userId}`, {
+      name: newAppliance.name,
+      power_rating: parseFloat(newAppliance.power_rating),
+      location: newAppliance.location
+    });
+
+    toast.success('Appliance added successfully');
+    
+    setNewAppliance({ name: '', power_rating: '', location: '' });
+    setShowAddForm(false);
+    
+    // ✅ Wait for server insert, then re-fetch the updated list
+    await fetchAppliances();  
+  } catch (error) {
+    toast.error('Failed to add appliance');
+  }
+};
 
   const handleControl = async (applianceId, currentStatus) => {
     const newStatus = currentStatus === 'ON' ? 'OFF' : 'ON';
