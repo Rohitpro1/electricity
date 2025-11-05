@@ -126,6 +126,26 @@ async def initialize_demo_data():
         await db.appliances.insert_one(appliance.model_dump())
 
     return {"message": "Demo data initialized successfully"}
+from fastapi import Body
+
+@api_router.put("/appliances/{appliance_id}/control")
+async def control_appliance(appliance_id: str, data: dict = Body(...)):
+    """
+    Turn appliance ON/OFF
+    """
+    new_status = data.get("status")
+    if new_status not in ["ON", "OFF"]:
+        raise HTTPException(status_code=400, detail="Invalid status value")
+
+    result = await db.appliances.update_one(
+        {"id": appliance_id},
+        {"$set": {"status": new_status}}
+    )
+
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Appliance not found")
+
+    return {"message": f"Appliance turned {new_status}"}
 # ================= APPLIANCE ENDPOINTS ==================
 
 from fastapi import Body
