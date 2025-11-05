@@ -7,6 +7,7 @@ import ApplianceControl from '../components/ApplianceControl';
 import BillCalculator from '../components/BillCalculator';
 import CostPredictor from '../components/CostPredictor';
 import EcoMode from '../components/EcoMode';
+import AdminUsageEntry from '../pages/AdminUsageEntry';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
