@@ -7,10 +7,10 @@ import ApplianceControl from '../components/ApplianceControl';
 import BillCalculator from '../components/BillCalculator';
 import CostPredictor from '../components/CostPredictor';
 import EcoMode from '../components/EcoMode';
-import AdminUsageEntry from '../pages/AdminUsageEntry'; // ✅ added import
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
+
 const COLORS = ['#ffffff', '#a0a0a0', '#707070', '#505050', '#303030'];
 
 export default function Dashboard({ user, onLogout }) {
@@ -36,10 +36,12 @@ export default function Dashboard({ user, onLogout }) {
 
   const renderChart = () => {
     if (!dashboardData?.hourly_data) return null;
+
     const chartData = Object.entries(dashboardData.hourly_data).map(([time, value]) => ({
       time: new Date(time).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit' }),
       consumption: parseFloat(value.toFixed(2))
     }));
+
     return (
       <ResponsiveContainer width="100%" height={300}>
         <LineChart data={chartData}>
@@ -55,10 +57,12 @@ export default function Dashboard({ user, onLogout }) {
 
   const renderPieChart = () => {
     if (!dashboardData?.appliance_breakdown) return null;
+
     const pieData = Object.entries(dashboardData.appliance_breakdown).map(([name, value]) => ({
       name,
       value: parseFloat(value.toFixed(2))
     }));
+
     return (
       <ResponsiveContainer width="100%" height={300}>
         <PieChart>
@@ -140,6 +144,7 @@ export default function Dashboard({ user, onLogout }) {
                   <h3>Usage Over Time</h3>
                   {renderChart()}
                 </div>
+
                 <div className="chart-card glass">
                   <h3>Appliance Breakdown</h3>
                   {renderPieChart()}
@@ -159,8 +164,6 @@ export default function Dashboard({ user, onLogout }) {
       return <EcoMode userId={user.user_id} />;
     } else if (activeTab === 'chat') {
       return <Chatbot userId={user.user_id} />;
-    } else if (activeTab === 'admin') {
-      return <AdminUsageEntry />; // ✅ renders admin page
     }
   };
 
@@ -181,32 +184,15 @@ export default function Dashboard({ user, onLogout }) {
 
       <div className="dashboard-layout">
         <aside className="sidebar glass">
-          <button className={`sidebar-item ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => setActiveTab('dashboard')} data-testid="tab-dashboard">
-            <span className="sidebar-icon">📊</span><span>Dashboard</span>
-          </button>
-          <button className={`sidebar-item ${activeTab === 'appliances' ? 'active' : ''}`} onClick={() => setActiveTab('appliances')} data-testid="tab-appliances">
-            <span className="sidebar-icon">🔌</span><span>Appliances</span>
-          </button>
-          <button className={`sidebar-item ${activeTab === 'bill' ? 'active' : ''}`} onClick={() => setActiveTab('bill')} data-testid="tab-bill">
-            <span className="sidebar-icon">💳</span><span>Bill</span>
-          </button>
-          <button className={`sidebar-item ${activeTab === 'predictor' ? 'active' : ''}`} onClick={() => setActiveTab('predictor')} data-testid="tab-predictor">
-            <span className="sidebar-icon">🔮</span><span>Predictor</span>
-          </button>
-          <button className={`sidebar-item ${activeTab === 'eco' ? 'active' : ''}`} onClick={() => setActiveTab('eco')} data-testid="tab-eco">
-            <span className="sidebar-icon">🌱</span><span>Eco Mode</span>
-          </button>
-          <button className={`sidebar-item ${activeTab === 'chat' ? 'active' : ''}`} onClick={() => setActiveTab('chat')} data-testid="tab-chat">
-            <span className="sidebar-icon">💬</span><span>AI Assistant</span>
-          </button>
-          <button className={`sidebar-item ${activeTab === 'admin' ? 'active' : ''}`} onClick={() => setActiveTab('admin')} data-testid="tab-admin">
-            <span className="sidebar-icon">🧑‍💼</span><span>Admin</span>
-          </button>
+          <button className={`sidebar-item ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => setActiveTab('dashboard')}><span className="sidebar-icon">📊</span><span>Dashboard</span></button>
+          <button className={`sidebar-item ${activeTab === 'appliances' ? 'active' : ''}`} onClick={() => setActiveTab('appliances')}><span className="sidebar-icon">🔌</span><span>Appliances</span></button>
+          <button className={`sidebar-item ${activeTab === 'bill' ? 'active' : ''}`} onClick={() => setActiveTab('bill')}><span className="sidebar-icon">💳</span><span>Bill</span></button>
+          <button className={`sidebar-item ${activeTab === 'predictor' ? 'active' : ''}`} onClick={() => setActiveTab('predictor')}><span className="sidebar-icon">🔮</span><span>Predictor</span></button>
+          <button className={`sidebar-item ${activeTab === 'eco' ? 'active' : ''}`} onClick={() => setActiveTab('eco')}><span className="sidebar-icon">🌱</span><span>Eco Mode</span></button>
+          <button className={`sidebar-item ${activeTab === 'chat' ? 'active' : ''}`} onClick={() => setActiveTab('chat')}><span className="sidebar-icon">💬</span><span>AI Assistant</span></button>
         </aside>
 
-        <main className="main-content">
-          {renderContent()}
-        </main>
+        <main className="main-content">{renderContent()}</main>
       </div>
     </div>
   );
