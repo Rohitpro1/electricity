@@ -129,3 +129,5 @@ motor
 bcrypt
 python-multipart
 starlette
+emergentintegrations==0.1.0
+
