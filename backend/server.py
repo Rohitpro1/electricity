@@ -13,6 +13,7 @@ import bcrypt
 import asyncio
 import google.generativeai as genai
 from random import randint, uniform
+from emergentintegrations.llm.chat import LlmChat, UserMessage
 
 
 # ============= CONFIG =============
@@ -23,19 +24,6 @@ load_dotenv(ROOT_DIR / '.env')
 mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
-
-# Gemini setup
-GEMINI_KEY = os.environ.get("GOOGLE_API_KEY")
-if GEMINI_KEY:
-    try:
-        genai.configure(api_key=GEMINI_KEY)
-        _gemini_model = genai.GenerativeModel("gemini-1.5-flash")
-    except Exception as e:
-        logging.error(f"Error initializing Gemini model: {e}")
-        _gemini_model = None
-else:
-    _gemini_model = None
-    logging.warning("⚠️ GOOGLE_API_KEY not set — chatbot will use fallback responses.")
 
 # FastAPI app
 app = FastAPI()
@@ -357,34 +345,22 @@ async def calculate_bill(user_id: str):
 
 @api_router.post("/chatbot")
 async def chatbot(request: ChatRequest):
-    """
-    E-WIZZ AI Assistant — Gemini-backed with fallback.
-    """
-    if not _gemini_model:
-        return {
-            "response": "AI assistant not fully enabled. Add GOOGLE_API_KEY in backend env to activate."
-        }
-
-    system_prompt = (
-        "You are an electricity monitoring assistant for E-WIZZ. "
-        "Help users analyze electricity usage, estimate bills, and give practical energy-saving tips. "
-        "When giving numbers, keep them realistic and explain the steps briefly."
-    )
-
     try:
-        # Gemini SDK call inside thread for async compatibility
-        def _generate():
-            return _gemini_model.generate_content([system_prompt, f"User: {request.message}"])
-
-        result = await asyncio.to_thread(_generate)
-        text = getattr(result, "text", None) or "I couldn't generate a response right now."
-        return {"response": text.strip()}
-
+        api_key = os.environ.get('EMERGENT_LLM_KEY')
+        chat = LlmChat(
+            api_key=api_key,
+            session_id=request.session_id,
+            system_message="You are an electricity monitoring assistant for E-WIZZ. Help users with queries about electricity consumption, bill calculations, energy saving tips, and appliance management."
+        ).with_model("openai", "gpt-4o-mini")
+        
+        user_message = UserMessage(text=request.message)
+        response = await chat.send_message(user_message)
+        
+        return {"response": response}
     except Exception as e:
-        logging.error(f"Chatbot error: {e}")
-        return {
-            "response": "I'm having trouble reaching the AI right now. Please try again in a bit."
-        }
+        logging.error(f"Chatbot error: {str(e)}")
+        return {"response": "I'm having trouble connecting right now. Please try again later."}
+
 # ============= COST PREDICTOR ENDPOINT =============
 
 @api_router.get("/predict/{user_id}")
