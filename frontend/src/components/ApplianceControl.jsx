@@ -21,7 +21,7 @@ export default function ApplianceControl({ userId }) {
   const fetchAppliances = async () => {
     try {
       const response = await axios.get(`${API}/appliances/${userId}`);
-      setAppliances(response.data);
+      setAppliances(response.data.appliances || []);
     } catch (error) {
       toast.error('Failed to load appliances');
     }
