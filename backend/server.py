@@ -148,43 +148,50 @@ async def generate_usage(user_id: str):
         logs.append(log)
 
     return {"message": "Demo usage logs added", "count": len(logs)}
+
+
 @api_router.get("/bill/{user_id}")
 async def get_bill(user_id: str):
     """
-    Calculate electricity bill for a given user based on usage logs.
+    Calculate electricity bill based on usage logs for a user.
     """
+
     user = await db.users.find_one({"id": user_id})
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    logs = await db.usagelogs.find({"user_id": user_id}).to_list(None)
-    if not logs:
+    # fetch all usage logs for this user
+    usage_logs = await db.usagelogs.find({"user_id": user_id}).to_list(None)
+
+    if not usage_logs or len(usage_logs) == 0:
         return {
             "message": "No usage data found",
+            "fixed_charge": 80,
+            "per_unit_charge": 6,
             "total_units": 0,
             "variable_charge": 0,
-            "fixed_charge": 0,
-            "total_amount": 0,
+            "total_amount": 0
         }
 
-    # Sum total power consumption (kWh)
-    total_units = sum(log.get("power_consumed", 0) for log in logs)
+    # Calculate total units consumed (sum of power_consumed)
+    total_units = sum(log.get("power_consumed", 0) for log in usage_logs)
 
-    # Example billing logic (you can tweak these)
-    FIXED_CHARGE = 50  # Rs. per month
-    RATE_PER_UNIT = 7  # Rs. per kWh
+    # --- Tariff configuration ---
+    FIXED_CHARGE = 80       # Rs (as seen in your screenshot)
+    RATE_PER_UNIT = 6       # Rs per kWh (you can adjust to 7 or 8 later)
 
+    # Calculate charges
     variable_charge = round(total_units * RATE_PER_UNIT, 2)
-    total_amount = round(variable_charge + FIXED_CHARGE, 2)
+    total_amount = round(FIXED_CHARGE + variable_charge, 2)
 
     return {
         "message": "Bill calculated successfully",
+        "fixed_charge": FIXED_CHARGE,
+        "per_unit_charge": RATE_PER_UNIT,
         "total_units": round(total_units, 2),
         "variable_charge": variable_charge,
-        "fixed_charge": FIXED_CHARGE,
-        "total_amount": total_amount,
+        "total_amount": total_amount
     }
-
 # ============= CHATBOT ENDPOINT =============
 # ============= DASHBOARD DATA ENDPOINT =============
 
