@@ -435,12 +435,12 @@ async def predict_future_cost(user_id: str):
 
     # --- Step 4: Return formatted result ---
     return {
-        "message": "Prediction calculated successfully",
-        "avg_daily_usage": round(avg_daily_usage, 2),
-        "predicted_units": round(predicted_units, 2),
-        "predicted_cost": round(predicted_cost, 2),
-        "tariff_type": "BESCOM LT2A Domestic"
-    }
+    "message": "Prediction calculated successfully",
+    "avg_daily_usage": round(avg_daily_usage, 2),
+    "predicted_units": round(predicted_units, 2),
+    "predicted_cost": round(predicted_cost, 2),
+    "tariff_type": "BESCOM LT2A Domestic"
+}
 
 # ============= ROOT ENDPOINT =============
 
