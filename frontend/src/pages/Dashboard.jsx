@@ -204,7 +204,7 @@ export default function Dashboard({ user, onLogout }) {
   </button>
 )}
         </aside>
-f
+
         <main className="main-content">{renderContent()}</main>
       </div>
     </div>
