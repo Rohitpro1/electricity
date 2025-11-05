@@ -201,7 +201,7 @@ async def generate_usage(user_id: str):
             "power_consumed": round(uniform(0.5, 3.0), 2)  # in kWh
         }
         # ✅ insert into the same collection used by /bill
-        await db.usagelogs.insert_one(log)
+        await db.usage_logs.insert_one(log)
         logs.append(log)
 
     return {"message": "Demo usage logs added", "count": len(logs)}
@@ -209,16 +209,14 @@ async def generate_usage(user_id: str):
 @api_router.get("/bill/{user_id}")
 async def get_bill(user_id: str):
     """
-    Calculate electricity bill based on usage logs for a user.
+    Calculates electricity bill using BESCOM LT2A domestic tariff.
+    Compatible with frontend values.
     """
 
-    user = await db.users.find_one({"id": user_id})
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+    # Fetch all usage logs from the correct collection
+    usage_logs = await db.usage_logs.find({"user_id": user_id}).to_list(length=None)
 
-    # fetch all usage logs for this user
-    usage_logs = await db.usagelogs.find({"user_id": user_id}).to_list(None)
-
+    # If no usage data found
     if not usage_logs or len(usage_logs) == 0:
         return {
             "message": "No usage data found",
@@ -226,27 +224,51 @@ async def get_bill(user_id: str):
             "per_unit_charge": 6,
             "total_units": 0,
             "variable_charge": 0,
-            "total_amount": 0
+            "total_bill": 0
         }
 
-    # Calculate total units consumed (sum of power_consumed)
+    # Total energy consumed in kWh
     total_units = sum(log.get("power_consumed", 0) for log in usage_logs)
 
-    # --- Tariff configuration ---
-    FIXED_CHARGE = 80       # Rs (as seen in your screenshot)
-    RATE_PER_UNIT = 6       # Rs per kWh (you can adjust to 7 or 8 later)
+    # Apply BESCOM tariff
+    remaining = total_units
+    variable_charge = 0.0
+    fixed_charge = 0
+    per_unit_charge = 0.0
 
-    # Calculate charges
-    variable_charge = round(total_units * RATE_PER_UNIT, 2)
-    total_amount = round(FIXED_CHARGE + variable_charge, 2)
+    if remaining <= 50:
+        variable_charge = remaining * 4.15
+        fixed_charge = 60
+        per_unit_charge = 4.15
+    elif remaining <= 100:
+        variable_charge = (50 * 4.15) + ((remaining - 50) * 5.60)
+        fixed_charge = 80
+        per_unit_charge = 5.60
+    elif remaining <= 200:
+        variable_charge = (50 * 4.15) + (50 * 5.60) + ((remaining - 100) * 7.15)
+        fixed_charge = 100
+        per_unit_charge = 7.15
+    else:
+        variable_charge = (
+            (50 * 4.15)
+            + (50 * 5.60)
+            + (100 * 7.15)
+            + ((remaining - 200) * 8.20)
+        )
+        fixed_charge = 120
+        per_unit_charge = 8.20
 
+    # Calculate total bill
+    total_bill = fixed_charge + variable_charge
+
+    # Return data formatted for frontend
     return {
         "message": "Bill calculated successfully",
-        "fixed_charge": FIXED_CHARGE,
-        "per_unit_charge": RATE_PER_UNIT,
+        "fixed_charge": round(fixed_charge, 2),
+        "per_unit_charge": round(per_unit_charge, 2),
         "total_units": round(total_units, 2),
-        "variable_charge": variable_charge,
-        "total_amount": total_amount
+        "variable_charge": round(variable_charge, 2),
+        "total_bill": round(total_bill, 2)
     }
 # ============= CHATBOT ENDPOINT =============
 # ============= DASHBOARD DATA ENDPOINT =============
