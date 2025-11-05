@@ -126,6 +126,39 @@ async def initialize_demo_data():
         await db.appliances.insert_one(appliance.model_dump())
 
     return {"message": "Demo data initialized successfully"}
+# ================= APPLIANCE ENDPOINTS ==================
+
+from fastapi import Body
+
+@api_router.get("/appliances/{user_id}")
+async def get_appliances(user_id: str):
+    appliances = await db.appliances.find({"user_id": user_id}, {"_id": 0}).to_list(None)
+    return {"appliances": appliances}
+
+@api_router.post("/appliances/{user_id}")
+async def add_appliance(user_id: str, data: dict = Body(...)):
+    """
+    Add new appliance for a given user
+    """
+    name = data.get("name")
+    power_rating = data.get("power_rating")
+    location = data.get("location")
+
+    if not name or not power_rating:
+        raise HTTPException(status_code=400, detail="Missing required fields")
+
+    appliance = {
+        "id": str(uuid.uuid4()),
+        "user_id": user_id,
+        "name": name,
+        "power_rating": float(power_rating),
+        "location": location or "Unknown",
+        "status": "OFF",
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+
+    await db.appliances.insert_one(appliance)
+    return {"message": "Appliance added successfully", "appliance": appliance}
     from random import randint, uniform
 
 from datetime import datetime, timezone, timedelta
