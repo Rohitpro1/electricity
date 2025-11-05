@@ -438,6 +438,44 @@ async def predict_future_cost(user_id: str):
         "average_daily_units": round(avg_daily_usage, 2),
         "tariff_type": "BESCOM LT2A Domestic"
     }
+from fastapi import Body
+
+@api_router.post("/admin/usage-entry")
+async def admin_add_usage(data: dict = Body(...)):
+    """
+    Allows admin to manually insert or update daily usage logs.
+    Example: {"user_id": "...", "date": "2025-11-05", "consumption_kwh": 4.8}
+    """
+    user_id = data.get("user_id")
+    date_str = data.get("date")
+    consumption = float(data.get("consumption_kwh", 0))
+
+    if not user_id or not date_str:
+        raise HTTPException(status_code=400, detail="Missing user_id or date")
+
+    # Normalize date to ISO day format
+    date_obj = datetime.fromisoformat(date_str).date()
+
+    # Check if log exists for that day
+    existing_log = await db.usage_logs.find_one({"user_id": user_id, "date": str(date_obj)})
+
+    if existing_log:
+        await db.usage_logs.update_one(
+            {"_id": existing_log["_id"]},
+            {"$set": {"power_consumed": consumption}}
+        )
+        message = "Usage updated successfully"
+    else:
+        new_log = {
+            "user_id": user_id,
+            "date": str(date_obj),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "power_consumed": consumption
+        }
+        await db.usage_logs.insert_one(new_log)
+        message = "New usage record added"
+
+    return {"message": message, "date": str(date_obj), "consumption_kwh": consumption}
 
 # ============= ROOT ENDPOINT =============
 
