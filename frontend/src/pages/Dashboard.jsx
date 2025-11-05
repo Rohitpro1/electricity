@@ -193,17 +193,15 @@ export default function Dashboard({ user, onLogout }) {
           <button className={`sidebar-item ${activeTab === 'predictor' ? 'active' : ''}`} onClick={() => setActiveTab('predictor')}><span className="sidebar-icon">🔮</span><span>Predictor</span></button>
           <button className={`sidebar-item ${activeTab === 'eco' ? 'active' : ''}`} onClick={() => setActiveTab('eco')}><span className="sidebar-icon">🌱</span><span>Eco Mode</span></button>
           <button className={`sidebar-item ${activeTab === 'chat' ? 'active' : ''}`} onClick={() => setActiveTab('chat')}><span className="sidebar-icon">💬</span><span>AI Assistant</span></button>
-{user?.role === 'admin' && (
-  <button
-    className={`sidebar-item ${activeTab === 'admin' ? 'active' : ''}`}
-    onClick={() => setActiveTab('admin')}
-    data-testid="tab-admin"
-  >
-    <span className="sidebar-icon">🛠️</span>
-    <span>Admin Usage</span>
-  </button>
-)}
-        </aside>
+<button
+  className={`sidebar-item ${activeTab === 'admin' ? 'active' : ''}`}
+  onClick={() => setActiveTab('admin')}
+  data-testid="tab-admin"
+>
+  <span className="sidebar-icon">🛠️</span>
+  <span>Admin Usage</span>
+</button>
+</aside>
 
         <main className="main-content">{renderContent()}</main>
       </div>
