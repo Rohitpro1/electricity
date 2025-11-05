@@ -148,7 +148,42 @@ async def generate_usage(user_id: str):
         logs.append(log)
 
     return {"message": "Demo usage logs added", "count": len(logs)}
+@api_router.get("/bill/{user_id}")
+async def get_bill(user_id: str):
+    """
+    Calculate electricity bill for a given user based on usage logs.
+    """
+    user = await db.users.find_one({"id": user_id})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
 
+    logs = await db.usagelogs.find({"user_id": user_id}).to_list(None)
+    if not logs:
+        return {
+            "message": "No usage data found",
+            "total_units": 0,
+            "variable_charge": 0,
+            "fixed_charge": 0,
+            "total_amount": 0,
+        }
+
+    # Sum total power consumption (kWh)
+    total_units = sum(log.get("power_consumed", 0) for log in logs)
+
+    # Example billing logic (you can tweak these)
+    FIXED_CHARGE = 50  # Rs. per month
+    RATE_PER_UNIT = 7  # Rs. per kWh
+
+    variable_charge = round(total_units * RATE_PER_UNIT, 2)
+    total_amount = round(variable_charge + FIXED_CHARGE, 2)
+
+    return {
+        "message": "Bill calculated successfully",
+        "total_units": round(total_units, 2),
+        "variable_charge": variable_charge,
+        "fixed_charge": FIXED_CHARGE,
+        "total_amount": total_amount,
+    }
 
 # ============= CHATBOT ENDPOINT =============
 # ============= DASHBOARD DATA ENDPOINT =============
