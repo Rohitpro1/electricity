@@ -112,7 +112,7 @@ export default function Dashboard({ user, onLogout }) {
                 <div className="stat-card glass">
                   <div className="stat-icon">⚡</div>
                   <div className="stat-info">
-                    <div className="stat-label">Total Consumption</div>
+                    <div className="stat-label">Total Consumption CREATED BY RKP</div>
                     <div className="stat-value">
                       {dashboardData?.total_consumption?.toFixed(2) || 0} kWh
                     </div>
