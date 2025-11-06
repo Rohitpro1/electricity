@@ -155,7 +155,7 @@ export default function Dashboard({ user, onLogout }) {
           )}
         </div>
       );
-    } else if (activeTab === 'appliances') {
+    } else if (activeTab === 'appliancesRKP') {
       return <ApplianceControl userId={user.user_id} />;
     } else if (activeTab === 'bill') {
       return <BillCalculator userId={user.user_id} />;
